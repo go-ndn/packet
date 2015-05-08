@@ -25,7 +25,7 @@ func Dial(network, addr string) (net.Conn, error) {
 			case <-c.closed:
 				return
 			default:
-				conn.SetReadDeadline(time.Now().Add(Heartbeat))
+				conn.SetReadDeadline(time.Now().Add(Dead))
 				n, err := conn.Read(b)
 				if err != nil {
 					continue

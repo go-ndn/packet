@@ -1,7 +1,7 @@
 # Connection-oriented packet stream
 
-- [x] connection-oriented
+- [x] connection-oriented (heartbeat peer detection)
 - [ ] reliable
 - [ ] in-order
 
-This provides minimal abstraction for NDN face by knowing when a face is down.
+This provides minimal abstraction for NDN face.

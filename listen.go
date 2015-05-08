@@ -36,7 +36,7 @@ func newListener(conn net.PacketConn) net.Listener {
 			case <-l.closed:
 				return
 			default:
-				conn.SetReadDeadline(time.Now().Add(Heartbeat))
+				conn.SetReadDeadline(time.Now().Add(Dead))
 				n, addr, err := conn.ReadFrom(b)
 				if err != nil {
 					continue
