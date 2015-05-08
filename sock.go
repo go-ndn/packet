@@ -39,7 +39,7 @@ func newConn(r reader, conn net.Conn, raddr net.Addr) *Conn {
 			case <-c.closed:
 				return
 			case <-time.After(Heartbeat):
-				c.Write(nil)
+				c.write(nil)
 			}
 		}
 	}()
@@ -66,15 +66,19 @@ func (c *Conn) Read(b []byte) (int, error) {
 	}
 }
 
+func (c *Conn) write(b []byte) (int, error) {
+	if c.raddr == nil {
+		return c.conn.Write(b)
+	}
+	return c.conn.(net.PacketConn).WriteTo(b, c.raddr)
+}
+
 func (c *Conn) Write(b []byte) (int, error) {
 	select {
 	case <-c.closed:
 		return 0, syscall.EINVAL
 	default:
-		if c.raddr == nil {
-			return c.conn.Write(b)
-		}
-		return c.conn.(net.PacketConn).WriteTo(b, c.raddr)
+		return c.write(b)
 	}
 }
 
