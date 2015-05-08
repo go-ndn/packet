@@ -87,7 +87,7 @@ func (l *Listener) read(b []byte, addr net.Addr) (n int, err error) {
 		case b[n] = <-ent.ch:
 		case <-time.After(Dead):
 			ent.mu.Lock()
-			ok := time.Now().Sub(ent.time) < Dead
+			ok := time.Since(ent.time) < Dead
 			ent.mu.Unlock()
 			if n == 0 && !ok {
 				l.mu.Lock()

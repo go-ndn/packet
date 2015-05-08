@@ -56,7 +56,7 @@ func (d *dialer) read(b []byte, _ net.Addr) (n int, err error) {
 		case b[n] = <-d.ch:
 		case <-time.After(Dead):
 			d.mu.Lock()
-			ok := time.Now().Sub(d.time) < Dead
+			ok := time.Since(d.time) < Dead
 			d.mu.Unlock()
 			if n == 0 && !ok {
 				err = io.EOF
