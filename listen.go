@@ -1,25 +1,16 @@
 package packet
 
 import (
-	"io"
 	"net"
-	"sync"
 	"syscall"
 	"time"
 )
-
-type entry struct {
-	time time.Time
-	ch   chan byte
-	mu   sync.Mutex
-}
 
 type Listener struct {
 	conn   net.PacketConn
 	accept chan net.Conn
 	closed chan struct{}
-	m      map[string]*entry
-	mu     sync.Mutex
+	r      *reader
 }
 
 func newListener(conn net.PacketConn) net.Listener {
@@ -27,7 +18,7 @@ func newListener(conn net.PacketConn) net.Listener {
 		conn:   conn,
 		accept: make(chan net.Conn),
 		closed: make(chan struct{}),
-		m:      make(map[string]*entry),
+		r:      newReader(),
 	}
 	go func() {
 		b := make([]byte, packetSize)
@@ -41,14 +32,8 @@ func newListener(conn net.PacketConn) net.Listener {
 				if err != nil {
 					continue
 				}
-				saddr := addr.String()
-
-				l.mu.Lock()
-				if _, ok := l.m[saddr]; !ok {
-					l.m[saddr] = &entry{
-						ch: make(chan byte, bufferSize),
-					}
-					c := newConn(l, conn.(net.Conn), addr)
+				if l.r.write(b[:n], addr) {
+					c := newConn(l.r, conn.(net.Conn), addr)
 					go func() {
 						select {
 						case <-l.closed:
@@ -56,50 +41,10 @@ func newListener(conn net.PacketConn) net.Listener {
 						}
 					}()
 				}
-				ent := l.m[saddr]
-				l.mu.Unlock()
-				if cap(ent.ch)-len(ent.ch) < n {
-					continue
-				}
-				ent.mu.Lock()
-				ent.time = time.Now()
-				ent.mu.Unlock()
-				for _, bb := range b[:n] {
-					ent.ch <- bb
-				}
 			}
 		}
 	}()
 	return l
-}
-
-func (l *Listener) read(b []byte, addr net.Addr) (n int, err error) {
-	saddr := addr.String()
-	l.mu.Lock()
-	ent, ok := l.m[saddr]
-	l.mu.Unlock()
-	if !ok {
-		err = io.EOF
-		return
-	}
-	for n = 0; n < len(b); n++ {
-		select {
-		case b[n] = <-ent.ch:
-		case <-time.After(Dead):
-			ent.mu.Lock()
-			ok := time.Since(ent.time) < Dead
-			ent.mu.Unlock()
-			if n == 0 && !ok {
-				l.mu.Lock()
-				delete(l.m, saddr)
-				l.mu.Unlock()
-
-				err = io.EOF
-			}
-			return
-		}
-	}
-	return
 }
 
 func (l *Listener) Accept() (net.Conn, error) {
