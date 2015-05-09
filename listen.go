@@ -10,7 +10,6 @@ type Listener struct {
 	conn   net.PacketConn
 	accept chan net.Conn
 	closed chan struct{}
-	r      *reader
 }
 
 func newListener(conn net.PacketConn) net.Listener {
@@ -18,9 +17,9 @@ func newListener(conn net.PacketConn) net.Listener {
 		conn:   conn,
 		accept: make(chan net.Conn),
 		closed: make(chan struct{}),
-		r:      newReader(),
 	}
 	go func() {
+		r := newReader()
 		b := make([]byte, packetSize)
 		for {
 			select {
@@ -32,8 +31,8 @@ func newListener(conn net.PacketConn) net.Listener {
 				if err != nil {
 					continue
 				}
-				if l.r.write(b[:n], addr) {
-					c := newConn(l.r, conn.(net.Conn), addr)
+				if r.write(b[:n], addr) {
+					c := newConn(r, conn.(net.Conn), addr)
 					go func() {
 						select {
 						case <-l.closed:
