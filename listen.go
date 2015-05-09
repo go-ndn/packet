@@ -31,7 +31,7 @@ func newListener(conn net.PacketConn) net.Listener {
 				if err != nil {
 					continue
 				}
-				if r.write(b[:n], addr) {
+				if r.write(b[:n], addr.String()) {
 					c := newConn(r, conn.(net.Conn), addr)
 					go func() {
 						select {

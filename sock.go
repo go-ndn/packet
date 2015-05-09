@@ -58,7 +58,11 @@ func (c *Conn) Read(b []byte) (int, error) {
 	case <-c.closed:
 		return 0, syscall.EINVAL
 	default:
-		return c.r.read(b, c.raddr)
+		var saddr string
+		if c.raddr != nil {
+			saddr = c.raddr.String()
+		}
+		return c.r.read(b, saddr)
 	}
 }
 

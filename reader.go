@@ -2,7 +2,6 @@ package packet
 
 import (
 	"io"
-	"net"
 	"sync"
 	"time"
 )
@@ -22,11 +21,7 @@ func newReader() *reader {
 	return &reader{m: make(map[string]*entry)}
 }
 
-func (r *reader) read(b []byte, addr net.Addr) (n int, err error) {
-	var saddr string
-	if addr != nil {
-		saddr = addr.String()
-	}
+func (r *reader) read(b []byte, saddr string) (n int, err error) {
 	r.mu.Lock()
 	ent, ok := r.m[saddr]
 	r.mu.Unlock()
@@ -54,11 +49,7 @@ func (r *reader) read(b []byte, addr net.Addr) (n int, err error) {
 	return
 }
 
-func (r *reader) write(b []byte, addr net.Addr) (create bool) {
-	var saddr string
-	if addr != nil {
-		saddr = addr.String()
-	}
+func (r *reader) write(b []byte, saddr string) (create bool) {
 	r.mu.Lock()
 	if _, ok := r.m[saddr]; !ok {
 		r.m[saddr] = &entry{

@@ -12,7 +12,7 @@ func Dial(network, addr string) (net.Conn, error) {
 	}
 	r := newReader()
 	// ensure entry exist
-	r.write(nil, nil)
+	r.write(nil, "")
 	c := newConn(r, conn, nil)
 	go func() {
 		b := make([]byte, packetSize)
@@ -26,7 +26,7 @@ func Dial(network, addr string) (net.Conn, error) {
 				if err != nil {
 					continue
 				}
-				r.write(b[:n], nil)
+				r.write(b[:n], "")
 			}
 		}
 	}()
