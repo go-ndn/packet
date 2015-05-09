@@ -1,9 +1,6 @@
 package packet
 
-import (
-	"net"
-	"time"
-)
+import "net"
 
 func Dial(network, addr string) (net.Conn, error) {
 	conn, err := net.Dial(network, addr)
@@ -17,17 +14,11 @@ func Dial(network, addr string) (net.Conn, error) {
 	go func() {
 		b := make([]byte, packetSize)
 		for {
-			select {
-			case <-c.closed:
+			n, err := conn.Read(b)
+			if err != nil {
 				return
-			default:
-				conn.SetReadDeadline(time.Now().Add(Dead))
-				n, err := conn.Read(b)
-				if err != nil {
-					continue
-				}
-				r.write(b[:n], "")
 			}
+			r.write(b[:n], "")
 		}
 	}()
 	return c, nil

@@ -3,7 +3,6 @@ package packet
 import (
 	"net"
 	"syscall"
-	"time"
 )
 
 type Listener struct {
@@ -22,24 +21,18 @@ func newListener(conn net.PacketConn) net.Listener {
 		r := newReader()
 		b := make([]byte, packetSize)
 		for {
-			select {
-			case <-l.closed:
+			n, addr, err := conn.ReadFrom(b)
+			if err != nil {
 				return
-			default:
-				conn.SetReadDeadline(time.Now().Add(Dead))
-				n, addr, err := conn.ReadFrom(b)
-				if err != nil {
-					continue
-				}
-				if r.write(b[:n], addr.String()) {
-					c := newConn(r, conn.(net.Conn), addr)
-					go func() {
-						select {
-						case <-l.closed:
-						case l.accept <- c:
-						}
-					}()
-				}
+			}
+			if r.write(b[:n], addr.String()) {
+				c := newConn(r, conn.(net.Conn), addr)
+				go func() {
+					select {
+					case <-l.closed:
+					case l.accept <- c:
+					}
+				}()
 			}
 		}
 	}()
@@ -47,11 +40,12 @@ func newListener(conn net.PacketConn) net.Listener {
 }
 
 func (l *Listener) Accept() (net.Conn, error) {
-	c, ok := <-l.accept
-	if !ok {
+	select {
+	case <-l.closed:
 		return nil, syscall.EINVAL
+	case c := <-l.accept:
+		return c, nil
 	}
-	return c, nil
 }
 
 func (l *Listener) Addr() net.Addr {
@@ -59,7 +53,6 @@ func (l *Listener) Addr() net.Addr {
 }
 
 func (l *Listener) Close() error {
-	close(l.accept)
 	close(l.closed)
 	return l.conn.Close()
 }

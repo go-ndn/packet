@@ -84,6 +84,9 @@ func (c *Conn) Write(b []byte) (int, error) {
 
 func (c *Conn) Close() error {
 	close(c.closed)
+	if c.raddr == nil {
+		return c.conn.Close()
+	}
 	return nil
 }
 
