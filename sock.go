@@ -8,7 +8,6 @@ import (
 
 const (
 	Heartbeat  = 10 * time.Second
-	Dead       = 2 * Heartbeat
 	packetSize = 8192
 	bufferSize = 131072
 )

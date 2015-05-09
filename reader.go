@@ -7,9 +7,8 @@ import (
 )
 
 type entry struct {
-	time time.Time
-	ch   chan byte
-	mu   sync.Mutex
+	b   chan byte
+	oob chan struct{}
 }
 
 type reader struct {
@@ -31,12 +30,11 @@ func (r *reader) read(b []byte, saddr string) (n int, err error) {
 	}
 	for n = 0; n < len(b); n++ {
 		select {
-		case b[n] = <-ent.ch:
-		case <-time.After(Dead):
-			ent.mu.Lock()
-			ok := time.Since(ent.time) < Dead
-			ent.mu.Unlock()
-			if n == 0 && !ok {
+		case b[n] = <-ent.b:
+		case <-time.After(Heartbeat):
+			select {
+			case <-ent.oob:
+			default:
 				r.mu.Lock()
 				delete(r.m, saddr)
 				r.mu.Unlock()
@@ -53,20 +51,22 @@ func (r *reader) write(b []byte, saddr string) (create bool) {
 	r.mu.Lock()
 	if _, ok := r.m[saddr]; !ok {
 		r.m[saddr] = &entry{
-			ch: make(chan byte, bufferSize),
+			b:   make(chan byte, bufferSize),
+			oob: make(chan struct{}, 1),
 		}
 		create = true
 	}
 	ent := r.m[saddr]
 	r.mu.Unlock()
-	if cap(ent.ch)-len(ent.ch) < len(b) {
+	if cap(ent.b)-len(ent.b) < len(b) {
 		return
 	}
-	ent.mu.Lock()
-	ent.time = time.Now()
-	ent.mu.Unlock()
 	for _, bb := range b {
-		ent.ch <- bb
+		ent.b <- bb
+	}
+	select {
+	case ent.oob <- struct{}{}:
+	default:
 	}
 	return
 }
