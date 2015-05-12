@@ -29,11 +29,12 @@ func newConn(r *reader, conn net.Conn, raddr net.Addr) *Conn {
 
 	go func() {
 		// send heartbeat
+		ticker := time.NewTicker(Heartbeat)
 		for {
 			select {
 			case <-c.closed:
 				return
-			case <-time.After(Heartbeat):
+			case <-ticker.C:
 				c.write(nil)
 			}
 		}

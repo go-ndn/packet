@@ -12,12 +12,12 @@ type entry struct {
 }
 
 type reader struct {
-	m  map[string]*entry
+	m  map[string]entry
 	mu sync.RWMutex
 }
 
 func newReader() *reader {
-	return &reader{m: make(map[string]*entry)}
+	return &reader{m: make(map[string]entry)}
 }
 
 func (r *reader) read(b []byte, saddr string) (n int, err error) {
@@ -28,10 +28,11 @@ func (r *reader) read(b []byte, saddr string) (n int, err error) {
 		err = io.EOF
 		return
 	}
+	timer := time.NewTimer(Heartbeat)
 	for n = 0; n < len(b); n++ {
 		select {
 		case b[n] = <-ent.b:
-		case <-time.After(Heartbeat):
+		case <-timer.C:
 			select {
 			case <-ent.oob:
 			default:
@@ -43,6 +44,7 @@ func (r *reader) read(b []byte, saddr string) (n int, err error) {
 			}
 			return
 		}
+		timer.Reset(Heartbeat)
 	}
 	return
 }
@@ -54,7 +56,7 @@ func (r *reader) write(b []byte, saddr string) (create bool) {
 
 	if !ok {
 		create = true
-		ent = &entry{
+		ent = entry{
 			b:   make(chan byte, bufferSize),
 			oob: make(chan struct{}, 1),
 		}
