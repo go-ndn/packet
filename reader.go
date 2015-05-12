@@ -13,7 +13,7 @@ type entry struct {
 
 type reader struct {
 	m  map[string]*entry
-	mu sync.Mutex
+	mu sync.RWMutex
 }
 
 func newReader() *reader {
@@ -21,9 +21,9 @@ func newReader() *reader {
 }
 
 func (r *reader) read(b []byte, saddr string) (n int, err error) {
-	r.mu.Lock()
+	r.mu.RLock()
 	ent, ok := r.m[saddr]
-	r.mu.Unlock()
+	r.mu.RUnlock()
 	if !ok {
 		err = io.EOF
 		return
@@ -48,16 +48,20 @@ func (r *reader) read(b []byte, saddr string) (n int, err error) {
 }
 
 func (r *reader) write(b []byte, saddr string) (create bool) {
-	r.mu.Lock()
-	if _, ok := r.m[saddr]; !ok {
-		r.m[saddr] = &entry{
+	r.mu.RLock()
+	ent, ok := r.m[saddr]
+	r.mu.RUnlock()
+
+	if !ok {
+		create = true
+		ent = &entry{
 			b:   make(chan byte, bufferSize),
 			oob: make(chan struct{}, 1),
 		}
-		create = true
+		r.mu.Lock()
+		r.m[saddr] = ent
+		r.mu.Unlock()
 	}
-	ent := r.m[saddr]
-	r.mu.Unlock()
 	if cap(ent.b)-len(ent.b) < len(b) {
 		return
 	}
