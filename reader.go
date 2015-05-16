@@ -7,8 +7,9 @@ import (
 )
 
 type entry struct {
-	b   chan byte
-	oob chan struct{}
+	b         chan byte
+	keepAlive chan struct{}
+	shutdown  chan struct{}
 }
 
 type reader struct {
@@ -21,6 +22,13 @@ func newReader() *reader {
 }
 
 func (r *reader) read(b []byte, saddr string) (n int, err error) {
+	defer func() {
+		if err == io.EOF {
+			r.mu.Lock()
+			delete(r.m, saddr)
+			r.mu.Unlock()
+		}
+	}()
 	r.mu.RLock()
 	ent, ok := r.m[saddr]
 	r.mu.RUnlock()
@@ -32,14 +40,13 @@ func (r *reader) read(b []byte, saddr string) (n int, err error) {
 	for n = 0; n < len(b); n++ {
 		select {
 		case b[n] = <-ent.b:
+		case <-ent.shutdown:
+			err = io.EOF
+			return
 		case <-timer.C:
 			select {
-			case <-ent.oob:
+			case <-ent.keepAlive:
 			default:
-				r.mu.Lock()
-				delete(r.m, saddr)
-				r.mu.Unlock()
-
 				err = io.EOF
 			}
 			return
@@ -57,22 +64,36 @@ func (r *reader) write(b []byte, saddr string) (create bool) {
 	if !ok {
 		create = true
 		ent = entry{
-			b:   make(chan byte, bufferSize),
-			oob: make(chan struct{}, 1),
+			b:         make(chan byte, bufferSize),
+			keepAlive: make(chan struct{}, 1),
+			shutdown:  make(chan struct{}, 1),
 		}
 		r.mu.Lock()
 		r.m[saddr] = ent
 		r.mu.Unlock()
 	}
-	if cap(ent.b)-len(ent.b) < len(b) {
-		return
-	}
-	for _, bb := range b {
-		ent.b <- bb
-	}
-	select {
-	case ent.oob <- struct{}{}:
+	switch len(b) {
+	case 0:
+	case 1:
+		switch b[0] {
+		case keepAlive:
+			select {
+			case ent.keepAlive <- struct{}{}:
+			default:
+			}
+		case shutdown:
+			select {
+			case ent.shutdown <- struct{}{}:
+			default:
+			}
+		}
 	default:
+		if cap(ent.b)-len(ent.b) < len(b) {
+			return
+		}
+		for _, bb := range b {
+			ent.b <- bb
+		}
 	}
 	return
 }

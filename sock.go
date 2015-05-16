@@ -10,6 +10,9 @@ const (
 	Heartbeat  = 10 * time.Second
 	packetSize = 8192
 	bufferSize = 131072
+
+	keepAlive = 0x01
+	shutdown  = 0x02
 )
 
 type Conn struct {
@@ -35,7 +38,7 @@ func newConn(r *reader, conn net.Conn, raddr net.Addr) *Conn {
 			case <-c.closed:
 				return
 			case <-ticker.C:
-				c.write(nil)
+				c.write([]byte{keepAlive})
 			}
 		}
 	}()
@@ -83,6 +86,7 @@ func (c *Conn) Write(b []byte) (int, error) {
 }
 
 func (c *Conn) Close() error {
+	c.write([]byte{shutdown})
 	close(c.closed)
 	if c.raddr == nil {
 		return c.conn.Close()
