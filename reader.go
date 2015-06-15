@@ -23,7 +23,7 @@ func newReader() *reader {
 
 func (r *reader) read(b []byte, saddr string) (n int, err error) {
 	defer func() {
-		if err == io.EOF {
+		if err != nil {
 			r.mu.Lock()
 			delete(r.m, saddr)
 			r.mu.Unlock()
