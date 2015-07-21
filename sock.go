@@ -94,7 +94,6 @@ func (c *Conn) Close() error {
 	return nil
 }
 
-// stub
 func (c *Conn) SetDeadline(time.Time) error      { return nil }
 func (c *Conn) SetReadDeadline(time.Time) error  { return nil }
 func (c *Conn) SetWriteDeadline(time.Time) error { return nil }
