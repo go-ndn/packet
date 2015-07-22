@@ -51,7 +51,7 @@ func (c *Conn) LocalAddr() net.Addr {
 
 func (c *Conn) RemoteAddr() net.Addr {
 	if c.raddr == nil {
-		return c.RemoteAddr()
+		return c.conn.RemoteAddr()
 	}
 	return c.raddr
 }
