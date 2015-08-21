@@ -2,12 +2,14 @@ package packet
 
 import (
 	"bytes"
+	"io"
 	"testing"
 	"time"
 )
 
 var (
-	msg = []byte{1, 2, 3}
+	clientMsg = []byte("client")
+	serverMsg = []byte("server")
 )
 
 const (
@@ -21,33 +23,47 @@ func TestConn(t *testing.T) {
 	}
 	defer ln.Close()
 
-	t.Log(ln.Addr())
-
-	conn1, err := Dial("udp", port)
+	// start client
+	client, err := Dial("udp", port)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer conn1.Close()
+	defer client.Close()
 
-	t.Log(conn1.LocalAddr())
-	t.Log(conn1.RemoteAddr())
+	// start server
+	server, err := ln.Accept()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer server.Close()
+
+	// SetDeadline does nothing
 	now := time.Now()
-	conn1.SetDeadline(now)
-	conn1.SetReadDeadline(now)
-	conn1.SetWriteDeadline(now)
-	conn1.Write(msg)
+	client.SetDeadline(now)
+	client.SetReadDeadline(now)
+	client.SetWriteDeadline(now)
 
-	conn2, err := ln.Accept()
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer conn2.Close()
+	// write something
+	client.Write(clientMsg)
+	server.Write(serverMsg)
 
-	time.Sleep(2 * Heartbeat)
-
-	buf := make([]byte, len(msg))
-	n, _ := conn2.Read(buf)
-	if !bytes.Equal(msg, buf[:n]) {
-		t.Fatalf("expected %v, got %v", msg, buf[:n])
+	buf := make([]byte, 512)
+	for _, test := range []struct {
+		io.Reader
+		want []byte
+	}{
+		{
+			Reader: client,
+			want:   serverMsg,
+		},
+		{
+			Reader: server,
+			want:   clientMsg,
+		},
+	} {
+		n, _ := test.Read(buf)
+		if !bytes.Equal(test.want, buf[:n]) {
+			t.Fatalf("expected %s, got %s", test.want, buf[:n])
+		}
 	}
 }
