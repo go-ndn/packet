@@ -10,9 +10,11 @@ const (
 	Heartbeat  = 10 * time.Second
 	packetSize = 8192
 	bufferSize = 131072
+)
 
-	keepAlive = 0x01
-	shutdown  = 0x02
+var (
+	keepAlive = []byte{0x01}
+	shutdown  = []byte{0x02}
 )
 
 type conn struct {
@@ -34,6 +36,8 @@ func newConn(buf *buffer, netConn net.Conn, raddr net.Addr) net.Conn {
 	}
 
 	go func() {
+		// notify the other end even if no message is given
+		c.write(keepAlive)
 		// send heartbeat
 		ticker := time.NewTicker(Heartbeat)
 		for {
@@ -41,7 +45,7 @@ func newConn(buf *buffer, netConn net.Conn, raddr net.Addr) net.Conn {
 			case <-c.closed:
 				return
 			case <-ticker.C:
-				c.write([]byte{keepAlive})
+				c.write(keepAlive)
 			}
 		}
 	}()
@@ -93,7 +97,7 @@ func (c *conn) Write(b []byte) (int, error) {
 
 func (c *conn) Close() error {
 	// write shutdown signal
-	c.write([]byte{shutdown})
+	c.write(shutdown)
 	close(c.closed)
 	if c.raddr == nil {
 		// dialer

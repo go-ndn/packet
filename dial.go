@@ -8,7 +8,7 @@ func Dial(network, addr string) (net.Conn, error) {
 		return nil, err
 	}
 	buf := newBuffer()
-	// ensure entry exist
+	// ensure ready to read
 	buf.WriteTo("", nil)
 	c := newConn(buf, conn, nil)
 	go func() {

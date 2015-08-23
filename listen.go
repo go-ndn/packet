@@ -21,17 +21,17 @@ func newListener(conn net.PacketConn) net.Listener {
 		buf := newBuffer()
 		b := make([]byte, packetSize)
 		for {
-			n, addr, err := conn.ReadFrom(b)
+			n, raddr, err := conn.ReadFrom(b)
 			if err != nil {
 				return
 			}
 			// write to buffer
-			if buf.WriteTo(addr.String(), b[:n]) {
+			if buf.WriteTo(raddr.String(), b[:n]) {
 				// new connection
 				go func() {
 					select {
 					case <-l.closed:
-					case l.accept <- newConn(buf, conn.(net.Conn), addr):
+					case l.accept <- newConn(buf, conn.(net.Conn), raddr):
 					}
 				}()
 			}
@@ -60,11 +60,10 @@ func (l *listener) Close() error {
 	return l.PacketConn.Close()
 }
 
-func Listen(network, addr string) (l net.Listener, err error) {
+func Listen(network, addr string) (net.Listener, error) {
 	c, err := net.ListenPacket(network, addr)
 	if err != nil {
-		return
+		return nil, err
 	}
-	l = newListener(c)
-	return
+	return newListener(c), nil
 }

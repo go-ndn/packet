@@ -61,9 +61,12 @@ func TestConn(t *testing.T) {
 			want:   clientMsg,
 		},
 	} {
-		n, _ := test.Read(buf)
+		n, err := test.Read(buf)
+		if err != nil {
+			t.Fatal(err)
+		}
 		if !bytes.Equal(test.want, buf[:n]) {
-			t.Fatalf("expected %s, got %s", test.want, buf[:n])
+			t.Fatalf("expect %s, got %s", test.want, buf[:n])
 		}
 	}
 }

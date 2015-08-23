@@ -37,22 +37,27 @@ func (buf *buffer) ReadFrom(saddr string, b []byte) (n int, err error) {
 		err = io.EOF
 		return
 	}
-	timer := time.NewTimer(Heartbeat)
-	for n = 0; n < len(b); n++ {
-		select {
-		case b[n] = <-ent.b:
-		case <-ent.shutdown:
-			err = io.EOF
-			return
-		case <-timer.C:
+	// handle complex signals only on the first byte
+	select {
+	case b[0] = <-ent.b:
+		// fill in as much as possible
+		for n = 1; n < len(b); n++ {
 			select {
-			case <-ent.keepAlive:
+			case b[n] = <-ent.b:
 			default:
-				err = io.EOF
+				return
 			}
-			return
 		}
-		timer.Reset(Heartbeat)
+	case <-ent.shutdown:
+		err = io.EOF
+		return
+	case <-time.After(Heartbeat):
+		select {
+		case <-ent.keepAlive:
+		default:
+			err = io.EOF
+		}
+		return
 	}
 	return
 }
@@ -75,12 +80,12 @@ func (buf *buffer) WriteTo(saddr string, b []byte) (create bool) {
 	case 0:
 	case 1:
 		switch b[0] {
-		case keepAlive:
+		case keepAlive[0]:
 			select {
 			case ent.keepAlive <- struct{}{}:
 			default:
 			}
-		case shutdown:
+		case shutdown[0]:
 			select {
 			case ent.shutdown <- struct{}{}:
 			default:
