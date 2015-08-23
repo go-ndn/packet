@@ -51,7 +51,7 @@ func (buf *buffer) ReadFrom(saddr string, b []byte) (n int, err error) {
 	case <-ent.shutdown:
 		err = io.EOF
 		return
-	case <-time.After(Heartbeat):
+	case <-time.After(heartbeat):
 		select {
 		case <-ent.keepAlive:
 		default:

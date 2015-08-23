@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	Heartbeat  = 10 * time.Second
+	heartbeat  = 10 * time.Second
 	packetSize = 8192
 	bufferSize = 131072
 )
@@ -39,7 +39,7 @@ func newConn(buf *buffer, netConn net.Conn, raddr net.Addr) net.Conn {
 		// notify the other end even if no message is given
 		c.write(keepAlive)
 		// send heartbeat
-		ticker := time.NewTicker(Heartbeat)
+		ticker := time.NewTicker(heartbeat)
 		for {
 			select {
 			case <-c.closed:
