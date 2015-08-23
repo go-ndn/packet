@@ -12,26 +12,27 @@ type entry struct {
 	shutdown  chan struct{}
 }
 
-type reader struct {
+// buffer allows incoming messages to be distributed to many readers
+type buffer struct {
 	m map[string]entry
 	sync.RWMutex
 }
 
-func newReader() *reader {
-	return &reader{m: make(map[string]entry)}
+func newBuffer() *buffer {
+	return &buffer{m: make(map[string]entry)}
 }
 
-func (r *reader) read(b []byte, saddr string) (n int, err error) {
+func (buf *buffer) ReadFrom(saddr string, b []byte) (n int, err error) {
 	defer func() {
 		if err != nil {
-			r.Lock()
-			delete(r.m, saddr)
-			r.Unlock()
+			buf.Lock()
+			delete(buf.m, saddr)
+			buf.Unlock()
 		}
 	}()
-	r.RLock()
-	ent, ok := r.m[saddr]
-	r.RUnlock()
+	buf.RLock()
+	ent, ok := buf.m[saddr]
+	buf.RUnlock()
 	if !ok {
 		err = io.EOF
 		return
@@ -56,11 +57,9 @@ func (r *reader) read(b []byte, saddr string) (n int, err error) {
 	return
 }
 
-func (r *reader) write(b []byte, saddr string) (create bool) {
-	r.RLock()
-	ent, ok := r.m[saddr]
-	r.RUnlock()
-
+func (buf *buffer) WriteTo(saddr string, b []byte) (create bool) {
+	buf.Lock()
+	ent, ok := buf.m[saddr]
 	if !ok {
 		create = true
 		ent = entry{
@@ -68,10 +67,10 @@ func (r *reader) write(b []byte, saddr string) (create bool) {
 			keepAlive: make(chan struct{}, 1),
 			shutdown:  make(chan struct{}, 1),
 		}
-		r.Lock()
-		r.m[saddr] = ent
-		r.Unlock()
+		buf.m[saddr] = ent
 	}
+	buf.Unlock()
+
 	switch len(b) {
 	case 0:
 	case 1:

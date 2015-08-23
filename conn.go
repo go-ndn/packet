@@ -15,17 +15,20 @@ const (
 	shutdown  = 0x02
 )
 
-type Conn struct {
-	r      *reader
-	conn   net.Conn
-	raddr  net.Addr
+type conn struct {
+	// read
+	*buffer
+	// write
+	net.Conn
+	raddr net.Addr
+	// close
 	closed chan struct{}
 }
 
-func newConn(r *reader, conn net.Conn, raddr net.Addr) *Conn {
-	c := &Conn{
-		r:      r,
-		conn:   conn,
+func newConn(buf *buffer, netConn net.Conn, raddr net.Addr) net.Conn {
+	c := &conn{
+		buffer: buf,
+		Conn:   netConn,
 		raddr:  raddr,
 		closed: make(chan struct{}),
 	}
@@ -45,55 +48,60 @@ func newConn(r *reader, conn net.Conn, raddr net.Addr) *Conn {
 	return c
 }
 
-func (c *Conn) LocalAddr() net.Addr {
-	return c.conn.LocalAddr()
-}
-
-func (c *Conn) RemoteAddr() net.Addr {
+func (c *conn) RemoteAddr() net.Addr {
 	if c.raddr == nil {
-		return c.conn.RemoteAddr()
+		// dialer
+		return c.Conn.RemoteAddr()
 	}
+	// listener
 	return c.raddr
 }
 
-func (c *Conn) Read(b []byte) (int, error) {
+func (c *conn) Read(b []byte) (int, error) {
 	select {
 	case <-c.closed:
+		// already closed
 		return 0, syscall.EINVAL
 	default:
+		// read from buffer with address
 		var saddr string
 		if c.raddr != nil {
 			saddr = c.raddr.String()
 		}
-		return c.r.read(b, saddr)
+		return c.ReadFrom(saddr, b)
 	}
 }
 
-func (c *Conn) write(b []byte) (int, error) {
+func (c *conn) write(b []byte) (int, error) {
 	if c.raddr == nil {
-		return c.conn.Write(b)
+		// dialer
+		return c.Conn.Write(b)
 	}
-	return c.conn.(net.PacketConn).WriteTo(b, c.raddr)
+	// listener
+	return c.Conn.(net.PacketConn).WriteTo(b, c.raddr)
 }
 
-func (c *Conn) Write(b []byte) (int, error) {
+func (c *conn) Write(b []byte) (int, error) {
 	select {
 	case <-c.closed:
+		// already closed
 		return 0, syscall.EINVAL
 	default:
 		return c.write(b)
 	}
 }
 
-func (c *Conn) Close() error {
+func (c *conn) Close() error {
+	// write shutdown signal
 	c.write([]byte{shutdown})
 	close(c.closed)
 	if c.raddr == nil {
-		return c.conn.Close()
+		// dialer
+		return c.Conn.Close()
 	}
 	return nil
 }
 
-func (c *Conn) SetDeadline(time.Time) error      { return nil }
-func (c *Conn) SetReadDeadline(time.Time) error  { return nil }
-func (c *Conn) SetWriteDeadline(time.Time) error { return nil }
+func (c *conn) SetDeadline(time.Time) error      { return nil }
+func (c *conn) SetReadDeadline(time.Time) error  { return nil }
+func (c *conn) SetWriteDeadline(time.Time) error { return nil }
