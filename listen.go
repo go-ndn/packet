@@ -60,10 +60,19 @@ func (l *listener) Close() error {
 	return l.PacketConn.Close()
 }
 
-func Listen(network, addr string) (net.Listener, error) {
+func listen(network, addr string) (net.Listener, error) {
 	c, err := net.ListenPacket(network, addr)
 	if err != nil {
 		return nil, err
 	}
 	return newListener(c), nil
+}
+
+func Listen(network, address string) (net.Listener, error) {
+	switch network {
+	case "udp", "udp4", "udp6", "ip", "ip4", "ip6", "unixgram":
+		return listen(network, address)
+	default:
+		return net.Listen(network, address)
+	}
 }

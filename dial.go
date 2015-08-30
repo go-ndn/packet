@@ -2,7 +2,7 @@ package packet
 
 import "net"
 
-func Dial(network, addr string) (net.Conn, error) {
+func dial(network, addr string) (net.Conn, error) {
 	conn, err := net.Dial(network, addr)
 	if err != nil {
 		return nil, err
@@ -23,4 +23,13 @@ func Dial(network, addr string) (net.Conn, error) {
 		}
 	}()
 	return c, nil
+}
+
+func Dial(network, address string) (net.Conn, error) {
+	switch network {
+	case "udp", "udp4", "udp6", "ip", "ip4", "ip6", "unixgram":
+		return dial(network, address)
+	default:
+		return net.Dial(network, address)
+	}
 }
