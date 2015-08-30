@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	heartbeat  = 10 * time.Second
+	heartbeat  = 2 * time.Hour
 	packetSize = 8192
 	bufferSize = 131072
 )
