@@ -8,9 +8,6 @@ func dial(network, addr string) (net.Conn, error) {
 		return nil, err
 	}
 	buf := newBuffer()
-	// ensure ready to read
-	buf.WriteTo("", nil)
-	c := newConn(buf, conn, nil)
 	go func() {
 		b := make([]byte, packetSize)
 		for {
@@ -18,11 +15,10 @@ func dial(network, addr string) (net.Conn, error) {
 			if err != nil {
 				return
 			}
-			// use "" as address
-			buf.WriteTo("", b[:n])
+			buf.Write(b[:n])
 		}
 	}()
-	return c, nil
+	return newConn(buf, conn, nil), nil
 }
 
 func Dial(network, address string) (net.Conn, error) {

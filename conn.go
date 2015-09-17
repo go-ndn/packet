@@ -1,6 +1,7 @@
 package packet
 
 import (
+	"io"
 	"net"
 	"syscall"
 	"time"
@@ -19,19 +20,19 @@ var (
 
 type conn struct {
 	// read
-	*buffer
+	io.Reader
 	// write
 	net.Conn
-	raddr net.Addr
+	net.Addr
 	// close
 	closed chan struct{}
 }
 
-func newConn(buf *buffer, netConn net.Conn, raddr net.Addr) net.Conn {
+func newConn(r io.Reader, netConn net.Conn, raddr net.Addr) *conn {
 	c := &conn{
-		buffer: buf,
+		Reader: r,
 		Conn:   netConn,
-		raddr:  raddr,
+		Addr:   raddr,
 		closed: make(chan struct{}),
 	}
 
@@ -53,12 +54,12 @@ func newConn(buf *buffer, netConn net.Conn, raddr net.Addr) net.Conn {
 }
 
 func (c *conn) RemoteAddr() net.Addr {
-	if c.raddr == nil {
+	if c.Addr == nil {
 		// dialer
 		return c.Conn.RemoteAddr()
 	}
 	// listener
-	return c.raddr
+	return c.Addr
 }
 
 func (c *conn) Read(b []byte) (int, error) {
@@ -67,22 +68,17 @@ func (c *conn) Read(b []byte) (int, error) {
 		// already closed
 		return 0, syscall.EINVAL
 	default:
-		// read from buffer with address
-		var saddr string
-		if c.raddr != nil {
-			saddr = c.raddr.String()
-		}
-		return c.ReadFrom(saddr, b)
+		return c.Reader.Read(b)
 	}
 }
 
 func (c *conn) write(b []byte) (int, error) {
-	if c.raddr == nil {
+	if c.Addr == nil {
 		// dialer
 		return c.Conn.Write(b)
 	}
 	// listener
-	return c.Conn.(net.PacketConn).WriteTo(b, c.raddr)
+	return c.Conn.(net.PacketConn).WriteTo(b, c.Addr)
 }
 
 func (c *conn) Write(b []byte) (int, error) {
@@ -99,7 +95,7 @@ func (c *conn) Close() error {
 	// write shutdown signal
 	c.write(shutdown)
 	close(c.closed)
-	if c.raddr == nil {
+	if c.Addr == nil {
 		// dialer
 		return c.Conn.Close()
 	}

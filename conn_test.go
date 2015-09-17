@@ -47,7 +47,7 @@ func TestConn(t *testing.T) {
 	client.Write(clientMsg)
 	server.Write(serverMsg)
 
-	buf := make([]byte, 512)
+	buf := make([]byte, 8)
 	for _, test := range []struct {
 		io.Reader
 		want []byte

@@ -1,14 +1,18 @@
 package packet
 
 import (
+	"io"
 	"net"
+	"sync"
 	"syscall"
 )
 
 type listener struct {
 	net.PacketConn
-	accept chan net.Conn
-	closed chan struct{}
+	accept     chan net.Conn
+	closed     chan struct{}
+	open       map[string]io.ReadWriter
+	sync.Mutex // open
 }
 
 func newListener(conn net.PacketConn) net.Listener {
@@ -16,22 +20,42 @@ func newListener(conn net.PacketConn) net.Listener {
 		PacketConn: conn,
 		accept:     make(chan net.Conn),
 		closed:     make(chan struct{}),
+		open:       make(map[string]io.ReadWriter),
 	}
 	go func() {
-		buf := newBuffer()
 		b := make([]byte, packetSize)
 		for {
 			n, raddr, err := conn.ReadFrom(b)
 			if err != nil {
 				return
 			}
-			// write to buffer
-			if buf.WriteTo(raddr.String(), b[:n]) {
+			addr := raddr.String()
+
+			l.Lock()
+			buf, ok := l.open[addr]
+			if !ok {
+				buf = newBuffer()
+				l.open[addr] = buf
+			}
+			l.Unlock()
+
+			buf.Write(b[:n])
+
+			if !ok {
 				// new connection
 				go func() {
+					c := newConn(buf, conn.(net.Conn), raddr)
 					select {
 					case <-l.closed:
-					case l.accept <- newConn(buf, conn.(net.Conn), raddr):
+						return
+					case l.accept <- c:
+					}
+					select {
+					case <-l.closed:
+					case <-c.closed:
+						l.Lock()
+						delete(l.open, addr)
+						l.Unlock()
 					}
 				}()
 			}
