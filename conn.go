@@ -44,6 +44,7 @@ func newConn(r io.Reader, netConn net.Conn, raddr net.Addr) *conn {
 		for {
 			select {
 			case <-c.closed:
+				ticker.Stop()
 				return
 			case <-ticker.C:
 				c.write(keepAlive)
