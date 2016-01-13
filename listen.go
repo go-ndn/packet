@@ -5,6 +5,8 @@ import (
 	"net"
 	"sync"
 	"syscall"
+
+	"github.com/go-ndn/tlv"
 )
 
 type listener struct {
@@ -23,7 +25,7 @@ func newListener(conn net.PacketConn) net.Listener {
 		open:       make(map[string]io.ReadWriter),
 	}
 	go func() {
-		b := make([]byte, packetSize)
+		b := make([]byte, tlv.MaxSize)
 		for {
 			n, raddr, err := conn.ReadFrom(b)
 			if err != nil {

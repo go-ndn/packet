@@ -9,7 +9,6 @@ import (
 
 const (
 	heartbeat  = 2 * time.Hour
-	packetSize = 8192
 	bufferSize = 131072
 )
 

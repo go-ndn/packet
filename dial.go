@@ -1,6 +1,10 @@
 package packet
 
-import "net"
+import (
+	"net"
+
+	"github.com/go-ndn/tlv"
+)
 
 func dial(network, addr string) (net.Conn, error) {
 	conn, err := net.Dial(network, addr)
@@ -9,7 +13,7 @@ func dial(network, addr string) (net.Conn, error) {
 	}
 	buf := newBuffer()
 	go func() {
-		b := make([]byte, packetSize)
+		b := make([]byte, tlv.MaxSize)
 		for {
 			n, err := conn.Read(b)
 			if err != nil {
