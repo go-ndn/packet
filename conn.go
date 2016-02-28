@@ -1,3 +1,14 @@
+// Package packet implements stream-oriented packet connection.
+//
+// The implementation splits packet-oriented connection like UDP and IP into different streams
+// with remote address.
+// In addition, heatbeat is sent periodically to detect whether remote is reachable.
+//
+// Although timeout is not supported, every network supported by go including net.PacketConn
+// can be converted to net.Conn with packet.Dial and packet.Listen. Network reliability remains
+// the same; for example, UDP is still unreliable.
+//
+// One-byte packet is reserved for managing streams.
 package packet
 
 import (

@@ -94,6 +94,9 @@ func listen(network, addr string) (net.Listener, error) {
 	return newListener(c), nil
 }
 
+// Listen announces on the local network address.
+//
+// If the network is not packet-oriented, it calls net.Listen directly.
 func Listen(network, address string) (net.Listener, error) {
 	switch network {
 	case "udp", "udp4", "udp6", "ip", "ip4", "ip6", "unixgram":
