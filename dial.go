@@ -2,6 +2,7 @@ package packet
 
 import (
 	"net"
+	"strings"
 
 	"github.com/go-ndn/tlv"
 )
@@ -29,6 +30,9 @@ func dial(network, addr string) (net.Conn, error) {
 //
 // If the network is not packet-oriented, it calls net.Dial directly.
 func Dial(network, address string) (net.Conn, error) {
+	if strings.IndexByte(address, ':') == 0 {
+		address = "localhost" + address
+	}
 	switch network {
 	case "udp", "udp4", "udp6", "ip", "ip4", "ip6", "unixgram":
 		return dial(network, address)
