@@ -8,7 +8,7 @@ import (
 )
 
 func dial(network, addr string) (net.Conn, error) {
-	conn, err := net.Dial(network, addr)
+	c, err := net.Dial(network, addr)
 	if err != nil {
 		return nil, err
 	}
@@ -16,14 +16,15 @@ func dial(network, addr string) (net.Conn, error) {
 	go func() {
 		b := make([]byte, tlv.MaxSize)
 		for {
-			n, err := conn.Read(b)
+			n, err := c.Read(b)
 			if err != nil {
 				return
 			}
 			buf.Write(b[:n])
 		}
 	}()
-	return newConn(buf, conn, nil), nil
+
+	return newConn(buf, c, c, c.LocalAddr(), c.RemoteAddr()), nil
 }
 
 // Dial connects to the address on the named network.

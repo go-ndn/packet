@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	heartbeat  = 2 * time.Hour
+	heartbeat  = time.Minute
 	bufferSize = 131072
 )
 
@@ -29,26 +29,26 @@ var (
 )
 
 type conn struct {
-	// read
 	io.Reader
-	// write
-	net.Conn
-	net.Addr
-	// close
-	closed chan struct{}
+	io.Writer
+	io.Closer
+	laddr, raddr net.Addr
+	closed       chan struct{}
 }
 
-func newConn(r io.Reader, netConn net.Conn, raddr net.Addr) *conn {
+func newConn(r io.Reader, w io.Writer, closer io.Closer, laddr, raddr net.Addr) *conn {
 	c := &conn{
 		Reader: r,
-		Conn:   netConn,
-		Addr:   raddr,
+		Writer: w,
+		Closer: closer,
+		laddr:  laddr,
+		raddr:  raddr,
 		closed: make(chan struct{}),
 	}
 
 	go func() {
 		// notify the other end even if no message is given
-		c.write(keepAlive)
+		c.Write(keepAlive)
 		// send heartbeat
 		ticker := time.NewTicker(heartbeat)
 		for {
@@ -57,20 +57,19 @@ func newConn(r io.Reader, netConn net.Conn, raddr net.Addr) *conn {
 				ticker.Stop()
 				return
 			case <-ticker.C:
-				c.write(keepAlive)
+				c.Write(keepAlive)
 			}
 		}
 	}()
 	return c
 }
 
+func (c *conn) LocalAddr() net.Addr {
+	return c.laddr
+}
+
 func (c *conn) RemoteAddr() net.Addr {
-	if c.Addr == nil {
-		// dialer
-		return c.Conn.RemoteAddr()
-	}
-	// listener
-	return c.Addr
+	return c.raddr
 }
 
 func (c *conn) Read(b []byte) (int, error) {
@@ -83,34 +82,21 @@ func (c *conn) Read(b []byte) (int, error) {
 	}
 }
 
-func (c *conn) write(b []byte) (int, error) {
-	if c.Addr == nil {
-		// dialer
-		return c.Conn.Write(b)
-	}
-	// listener
-	return c.Conn.(net.PacketConn).WriteTo(b, c.Addr)
-}
-
 func (c *conn) Write(b []byte) (int, error) {
 	select {
 	case <-c.closed:
 		// already closed
 		return 0, syscall.EINVAL
 	default:
-		return c.write(b)
+		return c.Writer.Write(b)
 	}
 }
 
 func (c *conn) Close() error {
 	// write shutdown signal
-	c.write(shutdown)
+	c.Write(shutdown)
 	close(c.closed)
-	if c.Addr == nil {
-		// dialer
-		return c.Conn.Close()
-	}
-	return nil
+	return c.Closer.Close()
 }
 
 func (c *conn) SetDeadline(time.Time) error      { return nil }

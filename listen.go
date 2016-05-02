@@ -17,6 +17,18 @@ type listener struct {
 	sync.Mutex // open
 }
 
+type writerFunc func([]byte) (int, error)
+
+func (f writerFunc) Write(b []byte) (int, error) {
+	return f(b)
+}
+
+type closerFunc func() error
+
+func (f closerFunc) Close() error {
+	return f()
+}
+
 func newListener(conn net.PacketConn) net.Listener {
 	l := &listener{
 		PacketConn: conn,
@@ -46,7 +58,9 @@ func newListener(conn net.PacketConn) net.Listener {
 			if !ok {
 				// new connection
 				go func() {
-					c := newConn(buf, conn.(net.Conn), raddr)
+					c := newConn(buf, writerFunc(func(b []byte) (int, error) {
+						return conn.WriteTo(b, raddr)
+					}), closerFunc(func() error { return nil }), conn.LocalAddr(), raddr)
 					select {
 					case <-l.closed:
 						return
