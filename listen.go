@@ -17,18 +17,6 @@ type listener struct {
 	sync.Mutex // open
 }
 
-type writerFunc func([]byte) (int, error)
-
-func (f writerFunc) Write(b []byte) (int, error) {
-	return f(b)
-}
-
-type closerFunc func() error
-
-func (f closerFunc) Close() error {
-	return f()
-}
-
 func newListener(conn net.PacketConn) net.Listener {
 	l := &listener{
 		PacketConn: conn,
@@ -108,12 +96,29 @@ func listen(network, addr string) (net.Listener, error) {
 	return newListener(c), nil
 }
 
+func listenUDP(network, addr string) (net.Listener, error) {
+	udpAddr, err := net.ResolveUDPAddr(network, addr)
+	if err != nil {
+		return nil, err
+	}
+	if udpAddr.IP.IsMulticast() {
+		c, err := net.ListenMulticastUDP(network, nil, udpAddr)
+		if err != nil {
+			return nil, err
+		}
+		return newListener(c), nil
+	}
+	return listen(network, addr)
+}
+
 // Listen announces on the local network address.
 //
 // If the network is not packet-oriented, it calls net.Listen directly.
 func Listen(network, address string) (net.Listener, error) {
 	switch network {
-	case "udp", "udp4", "udp6", "ip", "ip4", "ip6", "unixgram":
+	case "udp", "udp4", "udp6":
+		return listenUDP(network, address)
+	case "ip", "ip4", "ip6", "unixgram":
 		return listen(network, address)
 	default:
 		return net.Listen(network, address)

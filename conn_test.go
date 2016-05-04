@@ -7,24 +7,23 @@ import (
 	"time"
 )
 
-var (
-	clientMsg = []byte("client")
-	serverMsg = []byte("server")
-)
+func TestUDPConn(t *testing.T) {
+	testConn(t, "udp", ":6363")
+}
 
-const (
-	port = ":3000"
-)
+func TestMulticastUDP(t *testing.T) {
+	testConn(t, "udp", "224.0.23.170:56363")
+}
 
-func TestConn(t *testing.T) {
-	ln, err := Listen("udp", port)
+func testConn(t *testing.T, network, address string) {
+	ln, err := Listen(network, address)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer ln.Close()
 
 	// start client
-	client, err := Dial("udp", port)
+	client, err := Dial(network, address)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,11 +42,16 @@ func TestConn(t *testing.T) {
 	client.SetReadDeadline(now)
 	client.SetWriteDeadline(now)
 
+	var (
+		clientMsg = []byte("FROM_CLIENT")
+		serverMsg = []byte("FROM_SERVER")
+	)
+
 	// write something
 	client.Write(clientMsg)
 	server.Write(serverMsg)
 
-	buf := make([]byte, 8)
+	buf := make([]byte, 32)
 	for _, test := range []struct {
 		io.Reader
 		want []byte

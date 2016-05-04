@@ -36,6 +36,18 @@ type conn struct {
 	closed       chan struct{}
 }
 
+type writerFunc func([]byte) (int, error)
+
+func (f writerFunc) Write(b []byte) (int, error) {
+	return f(b)
+}
+
+type closerFunc func() error
+
+func (f closerFunc) Close() error {
+	return f()
+}
+
 func newConn(r io.Reader, w io.Writer, closer io.Closer, laddr, raddr net.Addr) *conn {
 	c := &conn{
 		Reader: r,
