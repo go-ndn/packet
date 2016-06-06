@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	heartbeat  = time.Minute
+	heartbeat  = 4 * time.Second
 	bufferSize = 131072
 )
 
