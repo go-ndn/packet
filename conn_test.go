@@ -8,7 +8,7 @@ import (
 )
 
 func TestUDPConn(t *testing.T) {
-	testConn(t, "udp", ":6363")
+	testConn(t, "udp", ":56363")
 }
 
 func TestMulticastUDP(t *testing.T) {
