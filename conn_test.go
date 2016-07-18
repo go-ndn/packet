@@ -7,12 +7,16 @@ import (
 	"time"
 )
 
-func TestUDPConn(t *testing.T) {
+func TestTCP(t *testing.T) {
+	testConn(t, "tcp", ":56363")
+}
+
+func TestUDP(t *testing.T) {
 	testConn(t, "udp", ":56363")
 }
 
 func TestMulticastUDP(t *testing.T) {
-	testConn(t, "udp", "224.0.23.170:56363")
+	testConn(t, "udp", "224.0.23.170:56364")
 }
 
 func testConn(t *testing.T, network, address string) {
@@ -36,11 +40,11 @@ func testConn(t *testing.T, network, address string) {
 	}
 	defer server.Close()
 
-	// SetDeadline does nothing
-	now := time.Now()
-	client.SetDeadline(now)
-	client.SetReadDeadline(now)
-	client.SetWriteDeadline(now)
+	// SetDeadline does nothing for packet conn.
+	dl := time.Now().Add(4 * time.Second)
+	client.SetDeadline(dl)
+	client.SetReadDeadline(dl)
+	client.SetWriteDeadline(dl)
 
 	var (
 		clientMsg = []byte("FROM_CLIENT")

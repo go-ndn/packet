@@ -88,14 +88,6 @@ func (l *listener) Close() error {
 	return l.PacketConn.Close()
 }
 
-func listen(network, addr string) (net.Listener, error) {
-	c, err := net.ListenPacket(network, addr)
-	if err != nil {
-		return nil, err
-	}
-	return newListener(c), nil
-}
-
 func listenUDP(network, addr string) (net.Listener, error) {
 	udpAddr, err := net.ResolveUDPAddr(network, addr)
 	if err != nil {
@@ -108,7 +100,11 @@ func listenUDP(network, addr string) (net.Listener, error) {
 		}
 		return newListener(c), nil
 	}
-	return listen(network, addr)
+	c, err := net.ListenUDP(network, udpAddr)
+	if err != nil {
+		return nil, err
+	}
+	return newListener(c), nil
 }
 
 // Listen announces on the local network address.
@@ -118,8 +114,6 @@ func Listen(network, address string) (net.Listener, error) {
 	switch network {
 	case "udp", "udp4", "udp6":
 		return listenUDP(network, address)
-	case "ip", "ip4", "ip6", "unixgram":
-		return listen(network, address)
 	default:
 		return net.Listen(network, address)
 	}
