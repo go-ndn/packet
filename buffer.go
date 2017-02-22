@@ -15,7 +15,7 @@ type buffer struct {
 func newBuffer() io.ReadWriter {
 	return &buffer{
 		b:         make(chan byte, bufferSize),
-		keepAlive: make(chan struct{}, 1),
+		keepAlive: make(chan struct{}, 10),
 		shutdown:  make(chan struct{}, 1),
 	}
 }
