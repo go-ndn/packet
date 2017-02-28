@@ -12,6 +12,11 @@ type buffer struct {
 	shutdown  chan struct{}
 }
 
+const (
+	bufferSize    = 131072
+	heartbeatIntv = 4 * time.Second
+)
+
 func newBuffer() io.ReadWriter {
 	return &buffer{
 		b:         make(chan byte, bufferSize),
@@ -38,7 +43,7 @@ func (buf *buffer) Read(b []byte) (n int, err error) {
 		}
 	case <-buf.shutdown:
 		err = io.EOF
-	case <-time.After(heartbeat):
+	case <-time.After(heartbeatIntv):
 		select {
 		case <-buf.keepAlive:
 		default:

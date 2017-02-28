@@ -18,11 +18,6 @@ import (
 	"time"
 )
 
-const (
-	heartbeat  = 4 * time.Second
-	bufferSize = 131072
-)
-
 var (
 	keepAlive = []byte{0x01}
 	shutdown  = []byte{0x02}
@@ -62,11 +57,11 @@ func newConn(r io.Reader, w io.Writer, closer io.Closer, laddr, raddr net.Addr) 
 		// notify the other end even if no message is given
 		c.Write(keepAlive)
 		// send heartbeat
-		ticker := time.NewTicker(heartbeat)
+		ticker := time.NewTicker(heartbeatIntv)
+		defer ticker.Stop()
 		for {
 			select {
 			case <-c.closed:
-				ticker.Stop()
 				return
 			case <-ticker.C:
 				c.Write(keepAlive)

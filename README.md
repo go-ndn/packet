@@ -1,10 +1,11 @@
 # stream-oriented packet connection
 
 - [x] stream-oriented
-- [x] heartbeat peer detection
+- [x] heartbeat
 - [x] fast shutdown
 - [ ] reliable
 - [ ] in-order
+- [ ] flow control
 
 It uses 1-byte message to control the connection because the minimum TLV packet is 2-byte.
 

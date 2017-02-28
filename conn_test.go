@@ -3,6 +3,7 @@ package packet
 import (
 	"bytes"
 	"io"
+	"net"
 	"testing"
 	"time"
 )
@@ -41,19 +42,49 @@ func testConn(t *testing.T, network, address string) {
 	defer server.Close()
 
 	// SetDeadline does nothing for packet conn.
-	dl := time.Now().Add(4 * time.Second)
-	client.SetDeadline(dl)
-	client.SetReadDeadline(dl)
-	client.SetWriteDeadline(dl)
+	dl := time.Now().Add(heartbeatIntv)
+	for _, test := range []net.Conn{
+		client,
+		server,
+	} {
+		err := test.SetDeadline(dl)
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = test.SetReadDeadline(dl)
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = test.SetWriteDeadline(dl)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
 
 	var (
 		clientMsg = []byte("FROM_CLIENT")
 		serverMsg = []byte("FROM_SERVER")
 	)
 
-	// write something
-	client.Write(clientMsg)
-	server.Write(serverMsg)
+	// write message
+	for _, test := range []struct {
+		io.Writer
+		in []byte
+	}{
+		{
+			Writer: client,
+			in:     clientMsg,
+		},
+		{
+			Writer: server,
+			in:     serverMsg,
+		},
+	} {
+		_, err := test.Write(test.in)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
 
 	buf := make([]byte, 32)
 	for _, test := range []struct {
