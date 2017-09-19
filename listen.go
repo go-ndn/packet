@@ -93,13 +93,6 @@ func listenUDP(network, addr string) (net.Listener, error) {
 	if err != nil {
 		return nil, err
 	}
-	if udpAddr.IP.IsMulticast() {
-		c, err := net.ListenMulticastUDP(network, nil, udpAddr)
-		if err != nil {
-			return nil, err
-		}
-		return newListener(c), nil
-	}
 	c, err := net.ListenUDP(network, udpAddr)
 	if err != nil {
 		return nil, err

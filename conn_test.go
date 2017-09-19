@@ -16,10 +16,6 @@ func TestUDP(t *testing.T) {
 	testConn(t, "udp", ":56363")
 }
 
-func TestMulticastUDP(t *testing.T) {
-	testConn(t, "udp", "224.0.23.170:56364")
-}
-
 func testConn(t *testing.T, network, address string) {
 	ln, err := Listen(network, address)
 	if err != nil {
